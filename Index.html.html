@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CaptchaEarn</title>
+<style>
+:root{--bg:#fff;--card:#f1f3f5;--tx:#111;--hint:#6b7280;--btn:#2481cc;--bt:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17212b;--card:#232e3c;--tx:#f5f5f5;--hint:#8b98a5;--btn:#3a8fd9}}
+:root[data-theme="dark"]{--bg:#17212b;--card:#232e3c;--tx:#f5f5f5;--hint:#8b98a5;--btn:#3a8fd9}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--tx);font:16px system-ui,-apple-system,sans-serif;overflow-x:hidden}
+main{max-width:480px;margin:auto;padding:16px 16px 90px}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px}
+.big{font-size:34px;font-weight:700}.hint{color:var(--hint);font-size:13px}
+canvas{width:100%;height:auto;border-radius:12px;display:block;background:#f5f5f0}
+input,select{width:100%;box-sizing:border-box;border-radius:12px;border:2px solid var(--bg);background:var(--bg);color:var(--tx);font-size:16px;padding:13px;margin:8px 0}
+input#ans{font-size:24px;letter-spacing:4px;text-align:center;text-transform:uppercase;margin:12px 0}
+input#ans::placeholder{text-transform:none;letter-spacing:0;font-size:16px}
+button.p{width:100%;padding:15px;font-size:17px;font-weight:600;border:0;border-radius:12px;background:var(--btn);color:var(--bt)}
+button.s{background:var(--bg);color:var(--tx);margin-top:8px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;padding:10px 0;border:0;background:none;color:var(--hint);font-size:11px}
+nav button.on{color:var(--btn);font-weight:700}
+.bar{height:10px;background:var(--bg);border-radius:5px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--btn);transition:width .3s}
+.row{display:flex;justify-content:space-between;padding:7px 0;gap:8px}
+.lv{display:flex;gap:12px;align-items:center;margin:12px 0}
+.lv b{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--bg);flex:none}
+.lv.done b{background:#22c55e;color:#fff}.lv.act b{background:var(--btn);color:var(--bt)}.lv.lock{opacity:.5}
+.pop{animation:pop .5s}@keyframes pop{30%{transform:scale(1.12);color:#22c55e}}
+.shake{animation:sh .35s}@keyframes sh{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+#fx{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.8);color:#fff;text-align:center;z-index:9;font-size:22px;padding:24px}
+#ad{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.88);color:#fff;text-align:center;z-index:10;padding:24px}</style></head><body>
+<script>window.onerror=function(m,u,l){var d=document.createElement('pre');d.style.cssText='white-space:pre-wrap;padding:16px;margin:0;color:#fff;background:#b91c1c;font:13px monospace';d.textContent='Error: '+m+' (line '+l+')';document.body.insertBefore(d,document.body.firstChild)}</script>
+<main id="v"><p style="padding:32px 16px;text-align:center">Loading CaptchaEarn…</p><noscript><p style="padding:16px;text-align:center">This app needs JavaScript. Open this file in Chrome, Safari, Firefox or Edge — not a file previewer.</p></noscript></main>
+<div id="fx"><div id="fxt"></div></div>
+<div id="ad"></div>
+<nav id="nav"></nav>
+<script>
+const $=s=>document.querySelector(s),T=2000,RATE=0.003,BOOST=0.01,MIN=30;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let tab='earn',bal=0,solved=0,wrong=0,sess=0,level=1,prog=0,boosted=false,ans='',cid='',hist=[],wd=[];
+const money=n=>'$'+n.toFixed(4),fmt=d=>d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const tabs=[['earn','⌨️','Earn'],['levels','🏆','Levels'],['wallet','💸','Withdraw'],['invite','👥','Referral']];
+$('#nav').innerHTML=tabs.map(([k,i,l])=>`<button data-k="${k}"><div style="font-size:18px">${i}</div>${l}</button>`).join('');
+$('#nav').onclick=e=>{const b=e.target.closest('button');if(b){tab=b.dataset.k;render()}};
+$('#fx').onclick=()=>$('#fx').style.display='none';
+function flash(t){$('#fxt').innerHTML=t;$('#fx').style.display='grid'}
+
+function gen(){const c='ACDEFHJKMNPRTWXY34679';ans='';for(let i=0;i<5;i++)ans+=c[Math.floor(Math.random()*c.length)];
+ cid=Math.random().toString(16).slice(2,10);
+ const cv=$('#cv');if(!cv)return;const x=cv.getContext('2d'),R=Math.random;cv.width=440;cv.height=140;
+ x.fillStyle='#f5f5f0';x.fillRect(0,0,440,140);
+ for(let i=0;i<4;i++){x.strokeStyle=`hsla(${R()*360},45%,50%,.55)`;x.lineWidth=1.5;x.beginPath();x.moveTo(R()*440,R()*140);x.bezierCurveTo(R()*440,R()*140,R()*440,R()*140,R()*440,R()*140);x.stroke()}
+ [...ans].forEach((ch,i)=>{x.save();x.translate(60+i*80,90+(R()*14-7));x.rotate((R()-.5)*.5);x.font='bold 60px Arial, sans-serif';x.textAlign='center';x.fillStyle=`hsl(${R()*360},55%,28%)`;x.fillText(ch,0,0);x.restore()});
+ for(let i=0;i<60;i++){x.fillStyle=`hsla(${R()*360},50%,40%,.4)`;x.fillRect(R()*440,R()*140,2,2)}
+ const a=$('#ans');if(a){a.value='';a.focus()}}
+
+function histHTML(){return `<div class="row"><span class="hint">Solved ${solved} · Wrong ${wrong}</span><span class="hint">${saveNote}</span></div>`+
+ (hist.slice(0,20).map(h=>`<div class="row"><span>${h.ok?'✅':'❌'} <span class="hint">#${h.cid} · Level ${h.lvl}${h.note?' · '+h.note:''}<br>${fmt(h.t)}</span></span><b>${h.ok?'+'+money(h.amt):'—'}</b></div>`).join('')||'<div class="hint" style="padding:8px 0">No captchas yet — solve one above</div>')}
+
+const AD='https://uplcm.com/4/11926632',WAIT=15000;
+let pend=null,hiddenAt=0;
+function log(o){hist.unshift({...o,t:new Date()});if(hist.length>50)hist.pop();persist(hist[0]);const h=$('#hist');if(h)h.innerHTML=histHTML()}
+function openAd(){let w=null;try{w=window.open(AD,'_blank');if(w)w.opener=null}catch(e){}return !!w}
+function showAd(opened){const p=pend,el=$('#ad');
+ el.innerHTML=`<div style="max-width:340px"><div style="font-size:44px">⏳</div><div style="font-size:20px;font-weight:700;margin:6px 0">Correct! Reward on hold</div>
+ <p style="font-size:15px;line-height:1.4">${opened?'An ad opened in a new tab. ':'Tap “Open ad” to continue. '}Stay on the ad for <b>15 seconds</b>, then come back to receive <b>${money(p.r)}</b>. If you return early, you get no reward.</p>
+ <a href="${AD}" target="_blank" rel="noopener" style="display:block;padding:15px;border-radius:12px;background:var(--btn);color:var(--bt);text-decoration:none;font-weight:600;margin-bottom:8px">Open ad</a>
+ <button class="p s" id="adskip">Skip — no reward</button></div>`;
+ el.style.display='grid';$('#adskip').onclick=()=>finish(false,'skipped')}
+function finish(ok,why){const p=pend;if(!p)return;pend=null;hiddenAt=0;$('#ad').style.display='none';const msg=$('#msg');let r=0;
+ if(ok){r=p.r;bal=Math.round((bal+r)*1e4)/1e4;solved++;sess++;
+  if(!boosted){prog++;if(prog>=T){if(level>=5){boosted=true;flash('🚀<br>Boost Unlocked!<br><small>You now earn $0.0100 per captcha</small>')}else{flash(`🎉<br>Level ${level} complete!`);level++;prog=0}}}
+  const b=$('#bal');if(b){b.textContent=money(bal);b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop');$('#sess').textContent=sess;$('#rate').textContent=money(boosted?BOOST:RATE)}
+  if(msg)msg.textContent='✓ Ad completed — reward +'+money(r)}
+ else if(msg)msg.textContent=why==='skipped'?'Skipped — no reward for that captcha':'✗ You came back too early — no reward for that captcha';
+ log({cid:p.id,ok,amt:r,lvl:p.lvl,note:ok?'':(why==='skipped'?'ad skipped':'left ad early')});gen()}
+document.addEventListener('visibilitychange',()=>{if(!pend)return;if(document.hidden){if(!hiddenAt)hiddenAt=Date.now()}else if(hiddenAt){const away=Date.now()-hiddenAt;hiddenAt=0;finish(away>=WAIT,'early')}});
+function submit(){const a=$('#ans').value.replace(/[^a-z0-9]/gi,'').toLowerCase();if(!a||pend)return;const msg=$('#msg');if(!ready){msg.textContent='Loading your saved progress…';return}
+ const ok=a===ans.toLowerCase(),id=cid;
+ if(!ok){wrong++;msg.textContent='✗ Wrong — it was '+ans+'. Here’s a new one';const i=$('#ans');i.classList.add('shake');setTimeout(()=>i.classList.remove('shake'),400);log({cid:id,ok:false,amt:0,lvl:level});gen();return}
+ pend={id,lvl:level,r:boosted?BOOST:RATE};hiddenAt=0;showAd(openAd())}
+
+const EM=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,UPI=/^[a-zA-Z0-9._-]{2,64}@[a-zA-Z]{2,32}$/,NAME={paypal:'PayPal',payoneer:'Payoneer',upi:'UPI'},PH={paypal:'PayPal email',payoneer:'Payoneer email',upi:'UPI ID (name@bank)'};
+function wdRequest(){const m=$('#wm').value,a=$('#wa').value.trim(),x=parseFloat($('#wx').value),msg=$('#wmsg');
+ if(!(m==='upi'?UPI:EM).test(a)){msg.textContent=m==='upi'?'Enter a valid UPI ID (name@bank)':'Enter a valid email address';return}
+ if(!(x>0)){msg.textContent='Enter an amount';return}
+ if(x<MIN){msg.textContent='Minimum withdrawal is $'+MIN+'.00';return}
+ if(x>bal){msg.textContent='Amount is higher than your balance';return}
+ msg.textContent='';$('#wr').style.display='none';
+ $('#wc').innerHTML=`<div class="hint" style="margin:8px 0">Withdraw $${x.toFixed(2)} to ${esc(a)} via ${NAME[m]}?</div><button class="p" id="wy">Confirm withdrawal</button><button class="p s" id="wn">Cancel</button>`;
+ $('#wy').onclick=()=>{bal=Math.round((bal-x)*1e4)/1e4;wd.unshift({amt:x,m,a,t:new Date(),st:'Pending'});persist();render()};$('#wn').onclick=render}
+
+function render(){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.k===tab));const v=$('#v');
+ if(tab==='earn'){v.innerHTML=`<div class="card"><div class="hint">Balance</div><div class="big" id="bal">${money(bal)}</div><div class="hint">Rate <span id="rate">${money(boosted?BOOST:RATE)}</span> per captcha · This session: <span id="sess">${sess}</span></div></div>
+ <div class="card"><canvas id="cv" width="440" height="140"></canvas>
+ <input id="ans" type="text" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" maxlength="10" placeholder="Type the text you see">
+ <button class="p" id="go">Submit</button><button class="p s" id="rf">↻ New captcha</button><div class="hint" style="margin-top:8px;text-align:center">After each correct captcha an ad opens. Stay on it for 15 seconds, then come back to receive your reward.</div><div class="hint" id="msg" style="margin-top:8px;text-align:center"></div></div>
+ <div class="card"><b>Captcha history</b><div id="hist" style="margin-top:6px">${histHTML()}</div></div>`;
+  $('#go').onclick=submit;$('#rf').onclick=gen;$('#ans').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();submit()}};gen()}
+ else if(tab==='levels'){v.innerHTML='<div class="card"><div style="font-weight:600;margin-bottom:4px">⏳ Complete the level task in 15 days to increase earning</div><div style="background:var(--btn);color:var(--bt);border-radius:12px;padding:12px;margin:8px 0 4px;font-weight:700;text-align:center">🚀 Complete the task and increase your earning to ₹1 per captcha</div>'+[1,2,3,4,5].map(n=>{const st=boosted||n<level?'done':n===level?'act':'lock',p=st==='done'?T:st==='act'?prog:0;
+  return `<div class="lv ${st}"><b>${st==='done'?'✓':st==='lock'?'🔒':n}</b><div style="flex:1">Level ${n}<div class="hint">${p}/${T}</div><div class="bar"><i style="width:${p/T*100}%"></i></div></div></div>`}).join('')+
+  '<div class="hint">Finish all 5 levels to permanently earn $0.0100 per captcha instead of $0.0030.</div></div>'}
+ else if(tab==='wallet'){v.innerHTML=`<div class="card"><div class="row"><span class="hint">Available</span><b>${money(bal)}</b></div></div>
+ <div class="card"><b>Withdraw</b>
+ <select id="wm"><option value="paypal">PayPal</option><option value="payoneer">Payoneer</option><option value="upi">UPI</option></select>
+ <input id="wa" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${PH.paypal}">
+ <input id="wx" inputmode="decimal" autocomplete="off" placeholder="Amount in USD (min $${MIN})">
+ <button class="p" id="wr">Request withdrawal</button><div id="wc"></div><div class="hint" id="wmsg" style="margin-top:8px"></div></div>
+ <div class="card"><b>Withdrawal history</b>${wd.map(w=>`<div class="row"><span>$${w.amt.toFixed(2)} · ${NAME[w.m]}<br><span class="hint">${esc(w.a)} · ${w.t.toLocaleDateString()}</span></span><b>${w.st}</b></div>`).join('')||'<div class="hint" style="margin-top:8px">No withdrawals yet</div>'}</div>`;
+  $('#wm').onchange=e=>{$('#wa').placeholder=PH[e.target.value]};$('#wr').onclick=wdRequest}
+ else{v.innerHTML=`<div class="card"><div class="hint">Earn a share of your friends’ captcha earnings, for life.</div><p style="word-break:break-all">https://t.me/YourBot?start=abc123</p><button class="p" onclick="navigator.clipboard&&navigator.clipboard.writeText('https://t.me/YourBot?start=abc123');this.textContent='Copied ✓'">Copy link</button></div>
+ <div class="card"><div class="row"><span class="hint">Friends invited</span><b>0</b></div><div class="row"><span class="hint">Referral earnings</span><b>$0.0000</b></div></div>`}}
+// ---- saving: every user's profile + every captcha entry ----
+let store=null,uid=null,ready=false,firstSeen=Date.now(),saveNote='Loading…',saveT=null,chain=Promise.resolve();
+const wait=ms=>new Promise(r=>setTimeout(()=>r(null),ms));
+const use=n=>{try{return window.claude&&window.claude.use?Promise.resolve(window.claude.use(n)).catch(()=>null):Promise.resolve(null)}catch(e){return Promise.resolve(null)}};
+const snap=()=>({balance:bal,solved,wrong,level,prog,boosted,firstSeen,lastSeen:Date.now(),withdrawals:wd.map(w=>({amt:w.amt,m:w.m,a:w.a,t:+w.t,st:w.st}))});
+const run=fn=>{chain=chain.then(fn).catch(()=>{})};
+function apply(d){bal=+d.balance||0;solved=+d.solved||0;wrong=+d.wrong||0;level=+d.level||1;prog=+d.prog||0;boosted=!!d.boosted;firstSeen=d.firstSeen||firstSeen;wd=(d.withdrawals||[]).map(w=>({...w,t:new Date(w.t)}))}
+function saveLocal(){try{localStorage.setItem('ce_state',JSON.stringify({p:snap(),h:hist.slice(0,50).map(h=>({...h,t:+h.t}))}))}catch(e){}}
+function persist(h){saveLocal();clearTimeout(saveT);
+ saveT=setTimeout(()=>{if(store)run(()=>store.doc('players/'+uid).set(snap()))},700);
+ if(store&&h)run(()=>store.doc(`players/${uid}/attempts/${+h.t}_${h.cid}`).set({cid:h.cid,ok:h.ok,amt:h.amt,lvl:h.lvl,note:h.note||'',t:+h.t}))}
+async function boot(){
+ try{const db=await Promise.race([use('db'),wait(5000)]),us=await Promise.race([use('user'),wait(5000)]);
+  const id=db&&us?await us.id():null;
+  if(id){uid=id;store=db;const p=await store.doc('players/'+uid).get();
+   if(p.exists){apply(p.data());const a=await store.collection(`players/${uid}/attempts`).orderBy('t','desc').limit(50).get();hist=a.docs.map(d=>d.data()).map(x=>({...x,t:new Date(x.t)}))}
+   else{ready=true;persist()}}
+ }catch(e){store=null}
+ if(!store){try{const x=JSON.parse(localStorage.getItem('ce_state')||'null');if(x){apply(x.p);hist=(x.h||[]).map(h=>({...h,t:new Date(h.t)}))}}catch(e){}}
+ saveNote=store?'Saved to your account':'Saved on this device';ready=true;saveLocal();render()}
+render();boot();
+</script></body></html>
